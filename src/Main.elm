@@ -1,63 +1,107 @@
-module Main exposing (..)
+module Main exposing (cardImage, getCatImage, greet, init, main, setCard, update, view, viewCard, viewCards)
 
+import DeckGenerator exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
+import Model exposing (..)
+
 
 greet : String -> String
 greet name =
     "Hello " ++ name
 
+
 getCatImage : String -> String
 getCatImage image =
-        "/cats/" ++ image ++ ".jpg"
+    "/cats/" ++ image ++ ".png"
 
-cardImage : Card -> Html a
+
+cardImage : Card -> Html Msg
 cardImage card =
-        case card.state of
-                Open ->
-                        img [ class "open",
-                        src (getCatImage card.id)] []
-                Closed ->
-                        img [ class "closed",
-                        src (getCatImage "closed")] []
-                Matched ->
-                        img [ class "matched",
-                        src (getCatImage card.id)] []
-
-
-viewCard: Card -> Html a
-viewCard card =
-        div [] [
-                cardImage card
+    case card.state of
+        Open ->
+            img
+                [ class "open"
+                , src (getCatImage card.id)
                 ]
+                []
 
-viewCards: List Card -> Html a
+        Closed ->
+            img
+                [ class "closed"
+                , src (getCatImage "closed")
+                , onClick (CardClick card)
+                ]
+                []
+
+        Matched ->
+            img
+                [ class "matched"
+                , src (getCatImage card.id)
+                ]
+                []
+
+
+viewCard : Card -> Html Msg
+viewCard card =
+    div []
+        [ cardImage card
+        ]
+
+
+viewCards : Deck -> Html Msg
 viewCards cards =
-        cards
+    cards
         |> List.map viewCard
         |> div []
 
-type CardState = Open | Closed | Matched
-type alias Card =
-        { id: String
-        , state: CardState
-        }
 
-card: Card
-card = { id = "1"
-       , state = Open
-       }
+view : Model -> Html Msg
+view model =
+    viewCards model.deck
 
-cards: List Card
-cards = [{ id = "1"
-        , state = Open
-        },
-        { id = "2"
-        , state = Matched
-        },
-        { id = "3"
-        , state = Closed
-        }]
+
+init : Model
+init =
+    { deck = DeckGenerator.static
+    , gameState = Choosing
+    }
+
+
+setCard : CardState -> Card -> Card
+setCard cardState card =
+    { card | state = cardState }
+
+
+
+-- closeUnmatched : Deck -> Deck
+-- closeUnmatched deck =
+-- updateCardClick : Card -> GameState -> GameState
+-- updateCardClick card gameState =
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        CardClick card ->
+            let
+                updateCard currentCard =
+                    if card.id == currentCard.id then
+                        setCard Open currentCard
+
+                    else
+                        currentCard
+
+                newDeck =
+                    List.map updateCard model.deck
+            in
+            { model | deck = newDeck }
+
 
 main =
-        viewCards cards
+    Html.beginnerProgram
+        { model = init
+        , update = update
+        , view = view
+        }
