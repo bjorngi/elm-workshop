@@ -45,7 +45,7 @@ cardImage card =
 
 viewCard : Card -> Html Msg
 viewCard card =
-    div []
+    div [ class "card" ]
         [ cardImage card
         ]
 
@@ -54,7 +54,7 @@ viewCards : Deck -> Html Msg
 viewCards cards =
     cards
         |> List.map viewCard
-        |> div []
+        |> div [ class "cards" ]
 
 
 view : Model -> Html Msg
@@ -69,16 +69,70 @@ init =
     }
 
 
-setCard : CardState -> Card -> Card
-setCard cardState card =
-    { card | state = cardState }
+setCard : CardState -> Card -> Deck -> Deck
+setCard cardState card deck =
+    let
+        updateCard selectedCard currentCard =
+            if selectedCard == currentCard then
+                { currentCard | state = cardState }
+
+            else
+                currentCard
+    in
+    deck
+        |> List.map (updateCard card)
 
 
+checkForMatch : Card -> Deck -> Deck
+checkForMatch card deck =
+    let
+        setMatched matchingCard currentCard =
+            if matchingCard.id == currentCard.id then
+                { currentCard | state = Matched }
 
--- closeUnmatched : Deck -> Deck
--- closeUnmatched deck =
--- updateCardClick : Card -> GameState -> GameState
--- updateCardClick card gameState =
+            else
+                currentCard
+
+        matchedCards =
+            deck
+                |> List.filter (\currentCard -> currentCard.id == card.id)
+                |> List.filter (\matchedCards -> matchedCards.state == Open)
+
+        newDeck =
+            if List.length matchedCards == 2 then
+                deck
+                    |> List.map (setMatched card)
+
+            else
+                deck
+    in
+    newDeck
+
+
+closeUnmatched : Deck -> Deck
+closeUnmatched deck =
+    let
+        updateCard currentCard =
+            if currentCard.state == Open then
+                { currentCard | state = Closed }
+
+            else
+                currentCard
+
+        newDeck =
+            deck
+                |> List.map updateCard
+    in
+    newDeck
+
+
+updateCardClick : GameState -> GameState
+updateCardClick gameState =
+    if gameState == Choosing then
+        Matching
+
+    else
+        Choosing
 
 
 update : Msg -> Model -> Model
@@ -86,17 +140,21 @@ update msg model =
     case msg of
         CardClick card ->
             let
-                updateCard currentCard =
-                    if card.id == currentCard.id then
-                        setCard Open currentCard
+                newDeck =
+                    if model.gameState == Choosing then
+                        model.deck
+                            |> closeUnmatched
+                            |> setCard Open card
 
                     else
-                        currentCard
-
-                newDeck =
-                    List.map updateCard model.deck
+                        model.deck
+                            |> setCard Open card
+                            |> checkForMatch card
             in
-            { model | deck = newDeck }
+            { model
+                | deck = newDeck
+                , gameState = updateCardClick model.gameState
+            }
 
 
 main =
